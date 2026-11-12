@@ -52,9 +52,6 @@ public partial class Player : CharacterBody3D
 
         CreateVisibleStingSword();
 
-        var cam = new Camera3D { Position = new Vector3(0, 5, 8), Current = true, Fov = 72 };
-        AddChild(cam);
-        cam.LookAt(new Vector3(0, 1, 0), Vector3.Up);
     }
 
     private void AddFallbackBody()
@@ -254,7 +251,9 @@ public partial class Player : CharacterBody3D
         if (joystick.Length() > .12f)
             input = joystick;
 
-        Vector3 direction = new Vector3(input.X, 0, input.Y).Normalized();
+        // Move relative to the orbit camera: W always moves toward the camera's view direction.
+        float cameraYaw = GetParent<MainWorld>().GetCameraYaw();
+        Vector3 direction = new Vector3(input.X, 0, input.Y).Rotated(Vector3.Up, cameraYaw).Normalized();
         moving = direction.LengthSquared() > .01f;
         Velocity = new Vector3(direction.X * 6.2f, Velocity.Y, direction.Z * 6.2f);
 
