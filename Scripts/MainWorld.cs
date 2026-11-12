@@ -1,7 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 public partial class MainWorld:Node3D{
- Player player=null!;Label stats=null!,questLabel=null!,message=null!;readonly List<Enemy> enemies=new();int kills,gold=50,xp,level=1,potions,swordPower=35;bool questAccepted,questComplete;float messageTimer;Vector3 elderPos=new(-12,0,-1);
+ Player player=null!;MobileJoystick? joystick;Label stats=null!,questLabel=null!,message=null!;readonly List<Enemy> enemies=new();int kills,gold=50,xp,level=1,potions,swordPower=35;bool questAccepted,questComplete;float messageTimer;Vector3 elderPos=new(-12,0,-1);
  public override void _Ready(){SetupInput();BuildWorld();player=new Player{Position=new Vector3(0,1.1f,0)};AddChild(player);LoadGame();Vector3[] spawnPoints={new Vector3(6,.7f,-6),new Vector3(-7,.7f,-10),new Vector3(12,.7f,7),new Vector3(18,.7f,-12),new Vector3(-19,.7f,14)};for(int i=Mathf.Clamp(kills,0,spawnPoints.Length);i<spawnPoints.Length;i++)Spawn(spawnPoints[i]);BuildHud();RefreshHud();Tell("Welcome to the Forgotten Vale. Find the Village Elder!");}
  public override void _Process(double delta){if(messageTimer>0){messageTimer-=(float)delta;if(messageTimer<=0&&GodotObject.IsInstanceValid(message))message.Text="";}if(questAccepted&&!questComplete&&kills>=3){questComplete=true;gold+=100;AddXp(100);Tell("Quest complete! +100 Gold and +100 XP.");RefreshHud();SaveGame();}}
  void SetupInput(){KeyAction("move_forward",Key.W);KeyAction("move_back",Key.S);KeyAction("move_left",Key.A);KeyAction("move_right",Key.D);KeyAction("attack",Key.Space);KeyAction("interact",Key.E);KeyAction("jump",Key.Shift);}
@@ -19,6 +19,7 @@ public partial class MainWorld:Node3D{
  }
  void Tree(Vector3 p,float s){AddChild(new MeshInstance3D{Mesh=new CylinderMesh{TopRadius=.18f,BottomRadius=.3f,Height=2.4f},Position=p+new Vector3(0,1.2f*s,0),Scale=Vector3.One*s,MaterialOverride=Player.Mat(new Color(.32f,.19f,.1f))});AddChild(new MeshInstance3D{Mesh=new SphereMesh{Radius=1.25f,Height=2.3f},Position=p+new Vector3(0,2.8f*s,0),Scale=new Vector3(1,1.15f,1)*s,MaterialOverride=Player.Mat(new Color(.1f,.34f,.17f))});}
  void Spawn(Vector3 p){var e=new Enemy{Position=p};AddChild(e);e.SetTarget(player);enemies.Add(e);}
+ public Vector2 GetJoystickDirection()=>joystick?.Direction??Vector2.Zero;
  public void HitClosestEnemy(Vector3 p,float range,int damage){Enemy? found=null;float best=range;foreach(var e in enemies){if(!GodotObject.IsInstanceValid(e))continue;float d=p.DistanceTo(e.GlobalPosition);if(d<best){best=d;found=e;}}if(found==null){Tell("No enemy in range!");return;}found.TakeHit(swordPower);if(found.Health<=0){kills++;gold+=10;AddXp(25);Tell("Slime defeated! +10 Gold, +25 XP");PersistGame(false);}RefreshHud();}
  public void Interact(){if(player.GlobalPosition.DistanceTo(elderPos)>5){Tell("Nobody nearby to talk to.");return;}if(!questAccepted){questAccepted=true;Tell("Elder: Three slimes threaten our vale. Defeat 3!");}else if(questComplete)Tell("Elder: You have our gratitude, hero.");else Tell($"Elder: Slimes defeated: {Mathf.Min(kills,3)}/3.");RefreshHud();}
  void AddXp(int n){xp+=n;while(xp>=level*100){xp-=level*100;level++;gold+=20;Tell($"LEVEL UP! Level {level}. +20 bonus Gold!");}}
@@ -33,6 +34,7 @@ public partial class MainWorld:Node3D{
  void BuildHud(){var layer=new CanvasLayer();AddChild(layer);var title=new Label{Text="PROJECT ECLIPSE  |  THE FORGOTTEN VALE",Position=new Vector2(18,12)};title.AddThemeFontSizeOverride("font_size",22);layer.AddChild(title);stats=new Label{Position=new Vector2(18,44)};layer.AddChild(stats);questLabel=new Label{Position=new Vector2(18,72)};layer.AddChild(questLabel);message=new Label{Position=new Vector2(18,104)};message.AddThemeColorOverride("font_color",new Color(1,.88f,.55f));layer.AddChild(message);
   MoveButton(layer,"↑",100,-190,"move_forward");MoveButton(layer,"↓",100,-100,"move_back");MoveButton(layer,"←",10,-100,"move_left");MoveButton(layer,"→",190,-100,"move_right");
   ActionButton(layer,"JUMP",-290,-105,-175,-30,()=>Input.ActionPress("jump"),()=>Input.ActionRelease("jump"),true);ActionButton(layer,"ATTACK",-165,-125,-20,-30,player.Attack,null,true);ActionButton(layer,"TALK",-165,-205,-20,-130,Interact,null,true);
+  joystick=new MobileJoystick{Position=new Vector2(24,GetViewport().GetVisibleRect().Size.Y-205)};layer.AddChild(joystick);
   var shop=new VBoxContainer{AnchorLeft=1,AnchorRight=1,OffsetLeft=-205,OffsetTop=14,OffsetRight=-12};layer.AddChild(shop);shop.AddChild(new Label{Text="FIELD SHOP"});ShopButton(shop,"Potion • 25 G",BuyPotion);ShopButton(shop,"Sword upgrade • 100 G",UpgradeSword);ShopButton(shop,"Use potion",UsePotion);ShopButton(shop,"SAVE GAME",SaveGame);ShopButton(shop,"LOAD GAME",()=>{LoadGame();RefreshHud();Tell("Save loaded.");});RefreshHud();
  }
  static void ShopButton(VBoxContainer box,string label,System.Action act){var b=new Button{Text=label,CustomMinimumSize=new Vector2(185,34)};b.Pressed+=act;box.AddChild(b);}
