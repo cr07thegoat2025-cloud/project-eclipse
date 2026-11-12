@@ -50,6 +50,8 @@ jobs:
           dotnet build ProjectEclipse.csproj --configuration Release --no-restore
       - name: Import Godot project
         run: godot --headless --editor --path . --import
+      - name: Build Godot C# solution for runtime
+        run: godot --headless --editor --path . --build-solutions --quit
       - name: Headless gameplay smoke test
         run: godot --headless --path . --quit-after 120
       - name: Export Android APK
