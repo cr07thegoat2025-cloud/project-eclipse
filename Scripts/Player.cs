@@ -84,9 +84,9 @@ public partial class Player : CharacterBody3D
         {
             string name = animationName.ToString().ToLowerInvariant();
             if (idleAnimation == null && name.Contains("idle"))
-                idleAnimation = animationName;
+                idleAnimation = animationName.ToString();
             if (moveAnimation == null && (name.Contains("walk") || name.Contains("run") || name.Contains("move")))
-                moveAnimation = animationName;
+                moveAnimation = animationName.ToString();
         }
 
         if (idleAnimation == null && animator.GetAnimationList().Length > 0)
@@ -208,7 +208,7 @@ public partial class Player : CharacterBody3D
     {
         if (animator == null) return;
         string? target = moving ? (moveAnimation ?? idleAnimation) : idleAnimation;
-        if (target != null && animator.CurrentAnimation != target)
+        if (target != null && animator.CurrentAnimation.ToString() != target)
             animator.Play(target);
     }
 
