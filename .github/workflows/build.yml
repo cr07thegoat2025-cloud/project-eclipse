@@ -1,12 +1,10 @@
 name: Build and test
-
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,5 +13,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Build C# project
+      - name: Compile C# project
         run: dotnet build ProjectEclipse.csproj --configuration Release
+      - name: Upload compiled output
+        uses: actions/upload-artifact@v4
+        with:
+          name: eclipse-v1-compiled
+          path: bin/Release/
+          if-no-files-found: warn

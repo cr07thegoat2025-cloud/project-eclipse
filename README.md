@@ -1,24 +1,26 @@
-# PROJECT ECLIPSE
+# PROJECT ECLIPSE — Version 1.0 Prototype
 
-A third-person fantasy RPG prototype built with C# and Godot 4 .NET. Android is the first target.
+A third-person fantasy RPG prototype built with C# and Godot 4.4.1 .NET. Android is the intended first platform.
 
-## First playable milestone
-- Procedural low-poly fantasy valley
-- Third-person player movement and follow camera
-- Slime enemies with pursuit AI
-- Basic melee combat and health
-- Desktop keyboard and on-screen touch controls
+## Included
+- Explore the Forgotten Vale, a procedurally assembled low-poly environment.
+- Third-person hero movement, jumping, melee attacks and health.
+- Slime enemies that pursue and damage the player.
+- Village Elder NPC and first quest: defeat three slimes.
+- Gold and XP rewards, level progression and level-up bonuses.
+- Field shop with healing potions and sword upgrades.
+- Save/load for player progress, inventory, quest state and position.
+- Keyboard controls and on-screen touch controls.
 
-## Run locally
-Install Godot 4 .NET and the .NET SDK version specified by the project. Open `project.godot`, let Godot import/build the C# project, then run the main scene.
+## Controls
+- WASD: move
+- Shift: jump
+- Space: attack
+- E: talk to the Village Elder
+- Touch: on-screen controls
 
-Desktop: WASD to move, Space to attack. Mobile: use the on-screen directional and attack buttons.
+## Run
+Install Godot 4.4.1 .NET and .NET 8 SDK, clone the repository, open project.godot in Godot .NET, let the C# project build, then run the main scene.
 
-## Roadmap
-- [x] First playable world, movement, enemies, combat and touch controls
-- [ ] Quests, dialogue and NPCs
-- [ ] Inventory, equipment, XP and leveling
-- [ ] Save/load
-- [ ] Android export and device testing
-
-The first milestone uses original procedural meshes; no third-party art assets are bundled.
+## Scope
+This is a playable first-version prototype, not a finished AAA open-world game. Multiplayer, large handcrafted maps, extensive quests, voice acting, and final art/audio are not included yet. First-milestone geometry is generated from Godot primitives.
