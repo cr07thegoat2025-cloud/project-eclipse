@@ -53,6 +53,13 @@ public partial class MainWorld : Node3D
                 message.Text = "";
         }
 
+        // Arrow keys orbit the camera; WASD remains dedicated to character movement.
+        float cameraStep = 1.9f * (float)delta;
+        if (Input.IsKeyPressed(Key.Left)) cameraYaw += cameraStep;
+        if (Input.IsKeyPressed(Key.Right)) cameraYaw -= cameraStep;
+        if (Input.IsKeyPressed(Key.Up)) cameraPitch = Mathf.Clamp(cameraPitch + cameraStep * .55f, .12f, .92f);
+        if (Input.IsKeyPressed(Key.Down)) cameraPitch = Mathf.Clamp(cameraPitch - cameraStep * .55f, .12f, .92f);
+
         if (GodotObject.IsInstanceValid(player) && GodotObject.IsInstanceValid(worldCamera))
             UpdateCamera(false);
 
