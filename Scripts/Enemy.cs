@@ -93,11 +93,21 @@ public partial class Enemy : CharacterBody3D
             FindAndPlayAnimation(child);
     }
 
+    private static StandardMaterial3D MakeMaterial(Color color, float metallic = 0f, float roughness = .9f)
+    {
+        return new StandardMaterial3D
+        {
+            AlbedoColor = color,
+            Metallic = metallic,
+            Roughness = roughness
+        };
+    }
+
     // Distinct flower-headed monster fallback; never show the old green slime sphere.
     private void BuildDemogorgonFallback()
     {
-        var skin = Player.Mat(new Color(.20f, .30f, .22f), .05f, .82f);
-        var dark = Player.Mat(new Color(.055f, .075f, .06f), .02f, .9f);
+        var skin = MakeMaterial(new Color(.20f, .30f, .22f), .05f, .82f);
+        var dark = MakeMaterial(new Color(.055f, .075f, .06f), .02f, .9f);
         var body = new MeshInstance3D
         {
             Mesh = new CapsuleMesh { Radius = .34f, Height = 1.35f },
@@ -128,13 +138,13 @@ public partial class Enemy : CharacterBody3D
         {
             Mesh = new SphereMesh { Radius = .07f, Height = .14f },
             Position = new Vector3(-.10f, 1.88f, -.27f),
-            MaterialOverride = Player.Mat(new Color(.8f, .12f, .08f))
+            MaterialOverride = MakeMaterial(new Color(.8f, .12f, .08f))
         });
         AddChild(new MeshInstance3D
         {
             Mesh = new SphereMesh { Radius = .07f, Height = .14f },
             Position = new Vector3(.10f, 1.88f, -.27f),
-            MaterialOverride = Player.Mat(new Color(.8f, .12f, .08f))
+            MaterialOverride = MakeMaterial(new Color(.8f, .12f, .08f))
         });
     }
 
