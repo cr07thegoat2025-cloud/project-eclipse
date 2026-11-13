@@ -259,6 +259,46 @@ public partial class MainWorld : Node3D
         BuildFenceLine(new Vector3(-18, 0, -9), 12, true);
         BuildFenceLine(new Vector3(-18, 0, -9), 9, false);
         BuildAncientRuins();
+        LoadImportedAdventureMap();
+    }
+
+
+    private void LoadImportedAdventureMap()
+    {
+        var packed = GD.Load<PackedScene>("res://game_pirate_adventure_map.glb");
+        if (packed == null)
+        {
+            GD.PushWarning("Custom adventure map could not be loaded; keeping the built-in world.");
+            return;
+        }
+
+        var map = packed.Instantiate<Node3D>();
+        map.Name = "ImportedPirateAdventureMap";
+        AddChild(map);
+        map.Scale = Vector3.One;
+
+        // Generate static triangle-mesh collision for every imported map mesh.
+        // Visual meshes remain untouched, so their materials and textures are preserved.
+        AddImportedMeshColliders(map);
+        GD.Print("Imported adventure map and generated static mesh collision.");
+    }
+
+    private void AddImportedMeshColliders(Node node)
+    {
+        if (node is MeshInstance3D meshInstance && meshInstance.Mesh != null)
+        {
+            var shape = meshInstance.Mesh.CreateTrimeshShape();
+            if (shape != null)
+            {
+                var collider = new StaticBody3D { Name = meshInstance.Name + "_ImportedCollision" };
+                AddChild(collider);
+                collider.GlobalTransform = meshInstance.GlobalTransform;
+                collider.AddChild(new CollisionShape3D { Shape = shape });
+            }
+        }
+
+        foreach (Node child in node.GetChildren())
+            AddImportedMeshColliders(child);
     }
 
     private void BuildAncientRuins()
