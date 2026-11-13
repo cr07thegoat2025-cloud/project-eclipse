@@ -2,9 +2,28 @@ using Godot;
 public partial class Enemy : CharacterBody3D {
  public int Health{get;private set;}=70; private Player? target; private float cooldown;
  public override void _Ready(){
-  AddChild(new CollisionShape3D{Shape=new SphereShape3D{Radius=.58f},Position=new Vector3(0,.58f,0)});
-  AddChild(new MeshInstance3D{Mesh=new SphereMesh{Radius=.62f,Height=1.24f},Position=new Vector3(0,.58f,0),Scale=new Vector3(1.1f,.8f,1.1f),MaterialOverride=Player.Mat(new Color(.18f,.72f,.38f))});
-  AddChild(new MeshInstance3D{Mesh=new SphereMesh{Radius=.1f,Height=.2f},Position=new Vector3(.22f,.83f,-.5f),MaterialOverride=Player.Mat(Colors.White)});
+  AddChild(new CollisionShape3D{Shape=new CapsuleShape3D{Radius=.48f,Height=1.9f},Position=new Vector3(0,.95f,0)});
+  var npcScene=GD.Load<PackedScene>("res://demogorgon_npc.glb");
+  if(npcScene!=null){
+   var model=npcScene.Instantiate<Node3D>();
+   model.Name="DemogorgonModel";
+   model.Scale=Vector3.One*.8f;
+   AddChild(model);
+   FindAndPlayAnimation(model);
+  }else{
+   GD.PushWarning("demogorgon_npc.glb did not import; using fallback enemy mesh.");
+   AddChild(new MeshInstance3D{Mesh=new SphereMesh{Radius=.62f,Height=1.24f},Position=new Vector3(0,.58f,0),Scale=new Vector3(1.1f,.8f,1.1f),MaterialOverride=Player.Mat(new Color(.18f,.72f,.38f))});
+  }
+ }
+ private void FindAndPlayAnimation(Node node){
+  if(node is AnimationPlayer animator){
+   var clips=animator.GetAnimationList();
+   string? chosen=null;
+   foreach(StringName clip in clips){string n=clip.ToString().ToLowerInvariant();if(n.Contains("idle")||n.Contains("walk")||n.Contains("run")){chosen=clip.ToString();break;}}
+   if(chosen==null&&clips.Length>0)chosen=clips[0].ToString();
+   if(chosen!=null)animator.Play(chosen);
+  }
+  foreach(Node child in node.GetChildren())FindAndPlayAnimation(child);
  }
  public void SetTarget(Player p)=>target=p;
  public override void _PhysicsProcess(double delta){
