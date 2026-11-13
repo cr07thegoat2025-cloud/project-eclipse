@@ -15,7 +15,9 @@ public partial class MainWorld : Node3D
     private Camera3D worldCamera = null!;
     private float cameraYaw;
     private float cameraPitch = .32f;
-    private const float CameraDistance = 7.5f;
+    private float cameraDistance = 7.5f;
+    private const float MinCameraDistance = 3.2f;
+    private const float MaxCameraDistance = 10.5f;
     private bool cameraDragging;
 
     public override void _Ready()
@@ -53,12 +55,12 @@ public partial class MainWorld : Node3D
                 message.Text = "";
         }
 
-        // Arrow keys orbit the camera; WASD remains dedicated to character movement.
-        float cameraStep = 1.9f * (float)delta;
-        if (Input.IsKeyPressed(Key.Left)) cameraYaw += cameraStep;
-        if (Input.IsKeyPressed(Key.Right)) cameraYaw -= cameraStep;
-        if (Input.IsKeyPressed(Key.Up)) cameraPitch = Mathf.Clamp(cameraPitch + cameraStep * .55f, .12f, .92f);
-        if (Input.IsKeyPressed(Key.Down)) cameraPitch = Mathf.Clamp(cameraPitch - cameraStep * .55f, .12f, .92f);
+        // Camera keyboard controls: arrows orbit/tilt; Q/E also rotate. WASD stays movement-only.
+        float cameraStep = 2.15f * (float)delta;
+        if (Input.IsKeyPressed(Key.Left) || Input.IsKeyPressed(Key.Q)) cameraYaw += cameraStep;
+        if (Input.IsKeyPressed(Key.Right) || Input.IsKeyPressed(Key.E)) cameraYaw -= cameraStep;
+        if (Input.IsKeyPressed(Key.Up)) cameraPitch = Mathf.Clamp(cameraPitch + cameraStep * .55f, .10f, 1.05f);
+        if (Input.IsKeyPressed(Key.Down)) cameraPitch = Mathf.Clamp(cameraPitch - cameraStep * .55f, .10f, 1.05f);
 
         if (GodotObject.IsInstanceValid(player) && GodotObject.IsInstanceValid(worldCamera))
             UpdateCamera(false);
@@ -82,6 +84,17 @@ public partial class MainWorld : Node3D
                 ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
             cameraDragging = false;
             GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (e is InputEventMouseButton wheel && wheel.Pressed && wheel.ButtonIndex == MouseButton.WheelUp)
+        {
+            cameraDistance = Mathf.Clamp(cameraDistance - .65f, MinCameraDistance, MaxCameraDistance);
+            return;
+        }
+        if (e is InputEventMouseButton wheelDown && wheelDown.Pressed && wheelDown.ButtonIndex == MouseButton.WheelDown)
+        {
+            cameraDistance = Mathf.Clamp(cameraDistance + .65f, MinCameraDistance, MaxCameraDistance);
             return;
         }
 
@@ -116,12 +129,25 @@ public partial class MainWorld : Node3D
 
     private void UpdateCamera(bool instant)
     {
-        float horizontal = Mathf.Cos(cameraPitch) * CameraDistance;
-        Vector3 focus = player.GlobalPosition + new Vector3(0, 1.15f, 0);
+        float horizontal = Mathf.Cos(cameraPitch) * cameraDistance;
+        Vector3 focus = player.GlobalPosition + new Vector3(0, 1.2f, 0);
         Vector3 desired = focus + new Vector3(Mathf.Sin(cameraYaw) * horizontal,
-            Mathf.Sin(cameraPitch) * CameraDistance + .15f,
+            Mathf.Sin(cameraPitch) * cameraDistance + .15f,
             Mathf.Cos(cameraYaw) * horizontal);
-        worldCamera.GlobalPosition = instant ? desired : worldCamera.GlobalPosition.Lerp(desired, 1f - Mathf.Exp(-12f * (float)GetProcessDeltaTime()));
+
+        // Pull the camera forward if a wall, tree, or building blocks the ideal follow position.
+        var ray = PhysicsRayQueryParameters3D.Create(focus, desired);
+        ray.Exclude = new Godot.Collections.Array<Rid> { player.GetRid() };
+        var obstruction = GetWorld3D().DirectSpaceState.IntersectRay(ray);
+        if (obstruction.Count > 0 && obstruction.TryGetValue("position", out Variant hitPosition))
+        {
+            Vector3 hit = hitPosition.AsVector3();
+            Vector3 awayFromFocus = (desired - focus).Normalized();
+            desired = hit - awayFromFocus * .28f;
+        }
+
+        float blend = 1f - Mathf.Exp(-14f * (float)GetProcessDeltaTime());
+        worldCamera.GlobalPosition = instant ? desired : worldCamera.GlobalPosition.Lerp(desired, blend);
         worldCamera.LookAt(focus, Vector3.Up);
     }
 
