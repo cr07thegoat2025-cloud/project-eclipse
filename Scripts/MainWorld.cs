@@ -605,6 +605,7 @@ public partial class MainWorld : Node3D
     {
         var enemy = new Enemy { Position = p };
         AddChild(enemy);
+        enemy.SetPhysicsProcess(false);
         enemy.SetTarget(player);
         enemies.Add(enemy);
     }
@@ -865,6 +866,9 @@ public partial class MainWorld : Node3D
         if (gameStarted) return;
         gameStarted = true;
         player.ControlsEnabled = true;
+        foreach (Enemy enemy in enemies)
+            if (GodotObject.IsInstanceValid(enemy))
+                enemy.SetPhysicsProcess(true);
         if (GodotObject.IsInstanceValid(menuLayer))
             menuLayer.QueueFree();
         if (GodotObject.IsInstanceValid(hudLayer))
