@@ -13,6 +13,9 @@ public partial class MainWorld : Node3D
     private float messageTimer;
     private readonly Vector3 elderPos = new(-12, 0, -1);
     private Camera3D worldCamera = null!;
+    private CanvasLayer hudLayer = null!, menuLayer = null!;
+    private bool gameStarted;
+    private static readonly Vector3 SafeSpawn = new(0, 2.15f, 0);
     private float cameraYaw;
     private float cameraPitch = .32f;
     private float cameraDistance = 7.5f;
@@ -25,9 +28,13 @@ public partial class MainWorld : Node3D
         SetupInput();
         BuildWorld();
 
-        player = new Player { Position = new Vector3(0, 1.1f, 0) };
+        player = new Player { Position = SafeSpawn };
         AddChild(player);
         LoadGame();
+        // Never restore a potentially corrupted/underground saved transform.
+        player.GlobalPosition = SafeSpawn;
+        player.Velocity = Vector3.Zero;
+        player.ControlsEnabled = false;
 
         worldCamera = new Camera3D { Current = true, Fov = 72, Near = .08f, Far = 180 };
         AddChild(worldCamera);
@@ -43,11 +50,14 @@ public partial class MainWorld : Node3D
 
         BuildHud();
         RefreshHud();
+        BuildMainMenu();
         Tell("Welcome to the Forgotten Vale. Find the Village Elder!");
     }
 
     public override void _Process(double delta)
     {
+        if (!gameStarted) return;
+
         if (messageTimer > 0)
         {
             messageTimer -= (float)delta;
@@ -78,6 +88,8 @@ public partial class MainWorld : Node3D
 
     public override void _Input(InputEvent e)
     {
+        if (!gameStarted) return;
+
         if (e is InputEventKey key && key.Pressed && !key.Echo && key.Keycode == Key.Escape)
         {
             Input.MouseMode = Input.MouseMode == Input.MouseModeEnum.Captured
@@ -161,6 +173,7 @@ public partial class MainWorld : Node3D
         KeyAction("move_left", Key.A);
         KeyAction("move_right", Key.D);
         KeyAction("attack", Key.Space);
+        InputMap.ActionAddEvent("attack", new InputEventMouseButton { ButtonIndex = MouseButton.Left });
         KeyAction("interact", Key.E);
         KeyAction("jump", Key.Shift);
     }
@@ -260,6 +273,7 @@ public partial class MainWorld : Node3D
         BuildFenceLine(new Vector3(-18, 0, -9), 9, false);
         BuildAncientRuins();
         LoadImportedAdventureMap();
+        BuildSafeSpawnPlatform();
     }
 
 
@@ -308,6 +322,34 @@ public partial class MainWorld : Node3D
         {
             GD.PushError("Adventure map loaded but contains no MeshInstance3D geometry.");
         }
+    }
+
+    private void BuildSafeSpawnPlatform()
+    {
+        // Dedicated collision-backed starting pad sits above the terrain so old map
+        // transforms or stale save coordinates cannot put the player below the level.
+        var pad = new StaticBody3D
+        {
+            Name = "SafeStartingPlatform",
+            Position = new Vector3(0, 1.45f, 0)
+        };
+        pad.AddChild(new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = new Vector3(12, .7f, 12) },
+            MaterialOverride = Mat(new Color(.16f, .22f, .27f), .35f, .55f)
+        });
+        pad.AddChild(new CollisionShape3D
+        {
+            Shape = new BoxShape3D { Size = new Vector3(12, .7f, 12) }
+        });
+        AddChild(pad);
+        AddChild(new Label3D
+        {
+            Text = "ECLIPSE CAMP",
+            FontSize = 30,
+            Position = new Vector3(0, 2.05f, -4.7f),
+            Modulate = new Color(.45f, .85f, 1f)
+        });
     }
 
     private bool TryGetMeshBounds(Node node, out Aabb bounds)
@@ -685,7 +727,7 @@ public partial class MainWorld : Node3D
         questAccepted = (bool)config.GetValue("quest", "accepted", false);
         questComplete = (bool)config.GetValue("quest", "complete", false);
         player.RestoreHealth((int)config.GetValue("player", "health", 100));
-        player.GlobalPosition = (Vector3)config.GetValue("world", "position", new Vector3(0, 1.1f, 0));
+        // Position is intentionally not restored; always spawn on the safe camp pad.
     }
 
     private void RefreshHud()
@@ -706,8 +748,10 @@ public partial class MainWorld : Node3D
 
     private void BuildHud()
     {
-        var layer = new CanvasLayer();
-        AddChild(layer);
+        hudLayer = new CanvasLayer();
+        hudLayer.Visible = false;
+        AddChild(hudLayer);
+        var layer = hudLayer;
         var title = new Label { Text = "PROJECT ECLIPSE  |  THE FORGOTTEN VALE", Position = new Vector2(18, 12) };
         title.AddThemeFontSizeOverride("font_size", 22);
         layer.AddChild(title);
@@ -739,6 +783,96 @@ public partial class MainWorld : Node3D
         ShopButton(shop, "SAVE GAME", SaveGame);
         ShopButton(shop, "LOAD GAME", () => { LoadGame(); RefreshHud(); Tell("Save loaded."); });
         RefreshHud();
+    }
+
+
+    private void BuildMainMenu()
+    {
+        menuLayer = new CanvasLayer { Layer = 20 };
+        AddChild(menuLayer);
+
+        var backdrop = new ColorRect
+        {
+            Color = new Color(.018f, .027f, .045f, .96f),
+            MouseFilter = Control.MouseFilterEnum.Stop
+        };
+        backdrop.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        menuLayer.AddChild(backdrop);
+
+        var center = new CenterContainer();
+        center.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        menuLayer.AddChild(center);
+
+        var panel = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(460, 390)
+        };
+        center.AddChild(panel);
+
+        var content = new VBoxContainer
+        {
+            Alignment = BoxContainer.AlignmentMode.Center,
+            Theme = new Theme()
+        };
+        content.AddThemeConstantOverride("separation", 16);
+        panel.AddChild(content);
+
+        var title = new Label
+        {
+            Text = "PROJECT ECLIPSE",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        title.AddThemeFontSizeOverride("font_size", 38);
+        title.AddThemeColorOverride("font_color", new Color(.48f, .82f, 1f));
+        content.AddChild(title);
+
+        var subtitle = new Label
+        {
+            Text = "THE FORGOTTEN VALE",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        subtitle.AddThemeFontSizeOverride("font_size", 18);
+        content.AddChild(subtitle);
+
+        var story = new Label
+        {
+            Text = "A dark world. A lost village.\nTake up your sword and survive.",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        story.AddThemeFontSizeOverride("font_size", 16);
+        content.AddChild(story);
+
+        var start = new Button
+        {
+            Text = "START ADVENTURE",
+            CustomMinimumSize = new Vector2(300, 58)
+        };
+        start.AddThemeFontSizeOverride("font_size", 22);
+        start.Pressed += StartGame;
+        content.AddChild(start);
+
+        var controls = new Label
+        {
+            Text = "WASD / Joystick: Move     •     SHIFT: Jump\nM1 / SPACE / ATTACK: Sword",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        controls.AddThemeFontSizeOverride("font_size", 14);
+        content.AddChild(controls);
+    }
+
+    private void StartGame()
+    {
+        if (gameStarted) return;
+        gameStarted = true;
+        player.ControlsEnabled = true;
+        if (GodotObject.IsInstanceValid(menuLayer))
+            menuLayer.QueueFree();
+        if (GodotObject.IsInstanceValid(hudLayer))
+            hudLayer.Visible = true;
+        player.GlobalPosition = SafeSpawn;
+        player.Velocity = Vector3.Zero;
+        UpdateCamera(true);
+        Tell("Welcome to the Forgotten Vale. Find the Village Elder!");
     }
 
     private static void ShopButton(VBoxContainer box, string label, Action action)
