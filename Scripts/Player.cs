@@ -16,6 +16,7 @@ public partial class Player : CharacterBody3D
     private Tween? swordTween;
     private float animationClock;
     private bool moving;
+    public bool ControlsEnabled { get; set; } = true;
 
     public override void _Ready()
     {
@@ -243,6 +244,11 @@ public partial class Player : CharacterBody3D
 
     public override void _PhysicsProcess(double delta)
     {
+        if (!ControlsEnabled)
+        {
+            Velocity = Vector3.Zero;
+            return;
+        }
         float dt = (float)delta;
         cooldown = Mathf.Max(0, cooldown - dt);
 
