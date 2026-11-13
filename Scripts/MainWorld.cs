@@ -258,6 +258,46 @@ public partial class MainWorld : Node3D
         BuildLantern(new Vector3(-15.5f, 0, -2.5f));
         BuildFenceLine(new Vector3(-18, 0, -9), 12, true);
         BuildFenceLine(new Vector3(-18, 0, -9), 9, false);
+        BuildAncientRuins();
+    }
+
+    private void BuildAncientRuins()
+    {
+        // A small explorable landmark on the eastern ridge, with solid stone pillars.
+        Vector3 center = new Vector3(23, 0, -22);
+        var stone = Mat(new Color(.38f, .40f, .39f), .12f, .94f);
+        for (int i = 0; i < 5; i++)
+        {
+            float angle = Mathf.Tau * i / 5f;
+            Vector3 offset = new Vector3(Mathf.Cos(angle) * 3.2f, 0, Mathf.Sin(angle) * 3.2f);
+            var pillar = new StaticBody3D { Name = "AncientRuinsPillar", Position = center + offset };
+            pillar.AddChild(new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = .38f, BottomRadius = .52f, Height = 3.2f },
+                Position = new Vector3(0, 1.6f, 0),
+                MaterialOverride = stone
+            });
+            pillar.AddChild(new CollisionShape3D
+            {
+                Shape = new CylinderShape3D { Radius = .5f, Height = 3.2f },
+                Position = new Vector3(0, 1.6f, 0)
+            });
+            AddChild(pillar);
+        }
+
+        AddChild(new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = 4.4f, BottomRadius = 4.4f, Height = .12f, RadialSegments = 12 },
+            Position = center + new Vector3(0, .02f, 0),
+            MaterialOverride = Mat(new Color(.27f, .28f, .26f), .04f, .98f)
+        });
+        AddChild(new Label3D
+        {
+            Text = "THE OLD WATCHSTONES",
+            FontSize = 34,
+            Position = center + new Vector3(0, 4.1f, 0),
+            Modulate = new Color(.82f, .88f, .78f)
+        });
     }
 
     private void CreateTree(Vector3 p, float scale)
