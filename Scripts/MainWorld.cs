@@ -265,22 +265,70 @@ public partial class MainWorld : Node3D
 
     private void LoadImportedAdventureMap()
     {
-        var packed = GD.Load<PackedScene>("res://game_pirate_adventure_map.glb");
+        const string mapPath = "res://game_pirate_adventure_map.glb";
+        if (!ResourceLoader.Exists(mapPath))
+        {
+            GD.PushError("MAP RESOURCE MISSING: " + mapPath);
+            return;
+        }
+
+        var packed = ResourceLoader.Load<PackedScene>(mapPath);
         if (packed == null)
         {
-            GD.PushWarning("Custom adventure map could not be loaded; keeping the built-in world.");
+            GD.PushError("MAP RESOURCE EXISTS BUT DID NOT IMPORT AS A PackedScene: " + mapPath);
             return;
         }
 
         var map = packed.Instantiate<Node3D>();
         map.Name = "ImportedPirateAdventureMap";
         AddChild(map);
-        map.Scale = Vector3.One;
+        map.Visible = true;
 
-        // Generate static triangle-mesh collision for every imported map mesh.
-        // Visual meshes remain untouched, so their materials and textures are preserved.
-        AddImportedMeshColliders(map);
-        GD.Print("Imported adventure map and generated static mesh collision.");
+        // Imported assets often have a distant origin or an unexpected authoring scale.
+        // Measure all mesh bounds, fit the map around the player, and place its lowest
+        // geometry at ground level so it is actually visible from the starting position.
+        if (TryGetMeshBounds(map, out Aabb rawBounds))
+        {
+            float horizontal = Mathf.Max(rawBounds.Size.X, rawBounds.Size.Z);
+            float scale = Mathf.Min(1.0f, 100.0f / Mathf.Max(horizontal, 0.01f));
+            if (rawBounds.Size.Y > 55.0f)
+                scale = Mathf.Min(scale, 55.0f / rawBounds.Size.Y);
+            map.Scale = Vector3.One * scale;
+
+            if (TryGetMeshBounds(map, out Aabb scaledBounds))
+            {
+                Vector3 center = scaledBounds.Position + scaledBounds.Size * 0.5f;
+                map.GlobalPosition += new Vector3(-center.X, -scaledBounds.Position.Y, -center.Z);
+                GD.Print($"Adventure map normalized. Mesh bounds: {scaledBounds.Size}, scale: {scale}");
+            }
+            AddImportedMeshColliders(map);
+            GD.Print("Adventure map loaded and static mesh colliders generated.");
+        }
+        else
+        {
+            GD.PushError("Adventure map loaded but contains no MeshInstance3D geometry.");
+        }
+    }
+
+    private bool TryGetMeshBounds(Node node, out Aabb bounds)
+    {
+        bool found = false;
+        bounds = new Aabb();
+        if (node is MeshInstance3D meshInstance && meshInstance.Mesh != null)
+        {
+            Aabb worldBounds = meshInstance.GlobalTransform * meshInstance.GetAabb();
+            bounds = found ? bounds.Merge(worldBounds) : worldBounds;
+            found = true;
+        }
+        foreach (Node child in node.GetChildren())
+        {
+            if (TryGetMeshBounds(child, out Aabb childBounds))
+            {
+                bounds = found ? bounds.Merge(childBounds) : childBounds;
+                found = true;
+            }
+        }
+        return found;
     }
 
     private void AddImportedMeshColliders(Node node)
@@ -296,7 +344,6 @@ public partial class MainWorld : Node3D
                 collider.AddChild(new CollisionShape3D { Shape = shape });
             }
         }
-
         foreach (Node child in node.GetChildren())
             AddImportedMeshColliders(child);
     }
@@ -546,7 +593,7 @@ public partial class MainWorld : Node3D
             kills++;
             gold += 10;
             AddXp(25);
-            Tell("Slime defeated! +10 Gold, +25 XP");
+            Tell("Demogorgon defeated! +10 Gold, +25 XP");
             PersistGame(false);
         }
         RefreshHud();
@@ -562,7 +609,7 @@ public partial class MainWorld : Node3D
         if (!questAccepted)
         {
             questAccepted = true;
-            Tell("Elder: Three slimes threaten our vale. Defeat 3!");
+            Tell("Elder: Demogorgons threaten our vale. Defeat 3!");
         }
         else if (questComplete)
             Tell("Elder: You have our gratitude, hero.");
@@ -647,7 +694,7 @@ public partial class MainWorld : Node3D
         stats.Text = $"HP {player.Health}/100   LVL {level} ({xp}/{level * 100} XP)   GOLD {gold}   POTIONS {potions}   SWORD {swordPower}";
         questLabel.Text = !questAccepted ? "Quest: Talk to the Village Elder [E]" :
             questComplete ? "Quest complete: A Safer Vale" :
-            $"Quest: Defeat 3 slimes ({Mathf.Min(kills, 3)}/3)";
+            $"Quest: Defeat 3 Demogorgons ({Mathf.Min(kills, 3)}/3)";
     }
 
     private void Tell(string text)
